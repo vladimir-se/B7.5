@@ -8,9 +8,6 @@ from os import system, name
 from time import sleep
 
 
-from termcolor import colored
-
-
 class Battlefield():
     '''
     Класс поля боя.
@@ -19,7 +16,7 @@ class Battlefield():
 
     def __init__(self, battle_ships):
         # Игровое поле.
-        empty_field = colored('○', 'blue')
+        empty_field = '.'
         self.fieldMatrix = {
             0:{0:' ', 1:'1', 2:'2', 3:'3', 4:'4', 5:'5', 6:'6'},
             1:{0:'1', 1:empty_field, 2:empty_field, 3:empty_field, 4:empty_field, 5:empty_field, 6:empty_field},
@@ -39,17 +36,24 @@ class Battlefield():
         self.populate_battlefield()
 
 
-    def display_play_field(self, hits, score):
+    def display_play_field(self,*args, **kwargs):
         '''
         Отрисовки поля боя.
+        player_hints - потери игрока
+        player_score - очки игрока
+        player_last_shot - координаты последнего выстрела игрока
+        player_total_shots - всего выстрелов игрока
+        enemy_last_shot - координаты последнего выстрела противника
+        enemy_total_shots - всего выстрелов противника
         '''
-        print(f"\n\tПотери:[{hits}]\tОчки:[{score}]")
-        print(f"{'_' * 40}\n")
+        print(f"\n\tПотери:[{kwargs['player_hints']}]\tОчки:[{kwargs['player_score']}]")
+        print(f"\n    Ход игрока:{kwargs['player_last_shot']}\n    Ход противника:{kwargs['enemy_last_shot']}")
+        print(f"\n    Всего:\n     ходов игрока:{kwargs['player_total_shots']}   хдов противника:{kwargs['enemy_total_shots']}")
+        print(f"  {'_' * 40}\n")
         for ox in self.fieldMatrix:
             for oy in self.fieldMatrix[ox].values():
-                print(oy, end = f"{' ' * 5}")
+                print(f"   {oy}", end = f"{' ' * 2}")
             print('\n')
-        print(f"   Палубы: {colored('■', 'cyan')} - три {colored('■', 'magenta')} - две {colored('■', 'yellow')} - одна")
 
 
     def populate_battlefield(self):
@@ -109,10 +113,9 @@ class BattleShip():
     '''
 
 
-    desk = '■'
-    bang = colored('✘', 'red')
-    blunder = colored('T', 'green')
-
+    desk = '#'
+    bang = 'X'
+    blunder = 'T'
 
     def __init__(self, ship_decks):
         self.__ship_decks = []
@@ -150,10 +153,9 @@ class BattleShip():
         '''
         Обозначить палубы корабля.
         '''
-        ship_colors = {1:"yellow", 2:"magenta", 3:"cyan"}
         if 0 < ship_decks < 4:
             for _ in range(ship_decks):
-                self.__ship_decks.append(colored(BattleShip.desk, ship_colors[ship_decks]))
+                self.__ship_decks.append(BattleShip.desk)
             return ship_decks
         else:
             raise(IndexError)
@@ -197,7 +199,8 @@ class Player():
         self.__player_name = name
         self.__score = 0
         self.__hint = 0
-        self._shot_history = []
+        self.last_shot = ''
+        self.shot_history = []
         self.fleet = fleet
         self.battlefield = battlefield
 
@@ -255,26 +258,31 @@ class Player():
         Выстрел игрока.
         '''
         while True:
-            __move = input(colored(' →  ', 'green'))
+            __move = input(' -> ')
+
             # Выход из игры.
             if __move == 'q':
-                print("До встречи! ✋\n")
+                print("До встречи!\n")
                 sys.exit()
+
             # Обработка ввода.
             elif __move.isdigit() and (len(__move) == 2 and 0 < (int(__move[0]) and int(__move[1])) < 7):                    
                 try:
                     # Проверка выстрела на повтор.
-                    if [__move[0], __move[1]] in self._shot_history:
+                    self.last_shot = [int(__move[0]), int(__move[1])]
+                    if self.last_shot in self.shot_history:
                         raise DoubleShotException()
-                    self._shot_history.append([__move[0], __move[1]])
+                    self.shot_history.append(self.last_shot)
                     break
                 except DoubleShotException:
-                    print(f"💀 {colored('Повторная стрельба по одним координатам запрещена!', 'red')} 💀")
+                    print(f"Повторная стрельба по одним координатам запрещена!")
                     continue
+
             else:
                 print("Введите корректное значение!")
                 continue
-            return __move
+
+        return self.last_shot
 
 
 class AIPlayer(Player):
@@ -293,11 +301,13 @@ class AIPlayer(Player):
         while True:
             ox = random.randint(1, 6)
             oy = random.randint(1, 6)
-            if [ox, oy] in self._shot_history:
+
+            self.last_shot = [ox, oy]
+            if self.last_shot in self.shot_history:
                 continue
             break
-        self._shot_history.append([ox, oy])
-        return(f"{ox}{oy}")
+        self.shot_history.append(self.last_shot)
+        return(self.last_shot)
 
 
     def move(self):
@@ -377,13 +387,34 @@ class TheGame():
             msg = f"Ход игрока: {player.player_name}"
             while True:
                 self.clear_screen()
-                # self.ai_player.battlefield.display_play_field(self.ai_player.player_hint, self.ai_player.player_score)
+                '''
+                player_hints - потери игрока
+                player_score - очки игрока
+                player_last_shot - координаты последнего выстрела игрока
+                player_total_shots - всего выстрелов игрока
+                enemy_last_shot - координаты последнего выстрела противника
+                enemy_total_shots - всего выстрелов противника
+                '''
+                # Поле противника.
+                # self.ai_player.battlefield.display_play_field(
+                #     player_hints = self.ai_player.player_hint, 
+                #     player_score = self.ai_player.player_score,
+                #     player_last_shot = self.ai_player.last_shot,
+                #     player_total_shots = len(self.ai_player.shot_history),
+                #     enemy_last_shot =self.human_player.last_shot,
+                #     enemy_total_shots = len(self.human_player.shot_history))
                 # Отображать только поле игрока.
-                self.human_player.battlefield.display_play_field(self.human_player.player_hint, self.human_player.player_score)
+                self.human_player.battlefield.display_play_field(
+                    player_hints = self.human_player.player_hint, 
+                    player_score = self.human_player.player_score,
+                    player_last_shot = self.human_player.last_shot,
+                    player_total_shots = len(self.human_player.shot_history),
+                    enemy_last_shot =self.ai_player.last_shot,
+                    enemy_total_shots = len(self.ai_player.shot_history))
                 print(msg)
-                move = player.move() 
+                move = player.move()
                 if move:
-                    player.player_score = self.shot(enemy, ox = int(move[0]), oy = int(move[1]))
+                    player.player_score = self.shot(enemy, ox = move[0], oy = move[1])
                     # continue
                 self.victory(player, enemy)
                 break
@@ -395,8 +426,7 @@ class TheGame():
         '''
         if not enemy.battlefield.position_search(ox, oy):
             # Помечаем клетку по которой велась стрельба.
-            if '○' in enemy.battlefield.fieldMatrix[ox][oy]:
-                print('------------------------------------')
+            if '.' == enemy.battlefield.fieldMatrix[ox][oy]:
                 enemy.battlefield.fieldMatrix[ox][oy] = BattleShip.blunder
             if BattleShip.desk in enemy.battlefield.fieldMatrix[ox][oy]:
                 enemy.battlefield.fieldMatrix[ox][oy] = BattleShip.bang
@@ -415,10 +445,11 @@ class TheGame():
         Определение победителя.
         '''
         if player.player_score == sum([ship.number_of_ship_decks for ship in enemy.fleet]):
-            print(f"🎆 Ура! Пбедил {player.player_name}! 🎆")
+            print(f"Ура! Пбедил {player.player_name}!")
             sys.exit()
 
 
 
 if __name__ == "__main__":
+    # player_name = input("Введите имя игрока: ")
     game = TheGame()
