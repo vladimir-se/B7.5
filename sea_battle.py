@@ -8,30 +8,36 @@ from os import system, name
 from time import sleep
 
 
+from termcolor import colored
+
+
 class Battlefield():
     '''
     Класс поля боя.
     '''
 
 
-    def __init__(self, battle_ships):
+    empty_field = colored('⦁', 'blue')
+
+
+    def __init__(self, battle_ships, you_are_human):
+        # Кто играет.
+        self.you_are_human = you_are_human
+
         # Игровое поле.
-        empty_field = '.'
         self.fieldMatrix = {
             0:{0:' ', 1:'1', 2:'2', 3:'3', 4:'4', 5:'5', 6:'6'},
-            1:{0:'1', 1:empty_field, 2:empty_field, 3:empty_field, 4:empty_field, 5:empty_field, 6:empty_field},
-            2:{0:'2', 1:empty_field, 2:empty_field, 3:empty_field, 4:empty_field, 5:empty_field, 6:empty_field},
-            3:{0:'3', 1:empty_field, 2:empty_field, 3:empty_field, 4:empty_field, 5:empty_field, 6:empty_field},
-            4:{0:'4', 1:empty_field, 2:empty_field, 3:empty_field, 4:empty_field, 5:empty_field, 6:empty_field},
-            5:{0:'5', 1:empty_field, 2:empty_field, 3:empty_field, 4:empty_field, 5:empty_field, 6:empty_field},
-            6:{0:'6', 1:empty_field, 2:empty_field, 3:empty_field, 4:empty_field, 5:empty_field, 6:empty_field},
+            1:{0:'1', 1:Battlefield.empty_field, 2:Battlefield.empty_field, 3:Battlefield.empty_field, 4:Battlefield.empty_field, 5:Battlefield.empty_field, 6:Battlefield.empty_field},
+            2:{0:'2', 1:Battlefield.empty_field, 2:Battlefield.empty_field, 3:Battlefield.empty_field, 4:Battlefield.empty_field, 5:Battlefield.empty_field, 6:Battlefield.empty_field},
+            3:{0:'3', 1:Battlefield.empty_field, 2:Battlefield.empty_field, 3:Battlefield.empty_field, 4:Battlefield.empty_field, 5:Battlefield.empty_field, 6:Battlefield.empty_field},
+            4:{0:'4', 1:Battlefield.empty_field, 2:Battlefield.empty_field, 3:Battlefield.empty_field, 4:Battlefield.empty_field, 5:Battlefield.empty_field, 6:Battlefield.empty_field},
+            5:{0:'5', 1:Battlefield.empty_field, 2:Battlefield.empty_field, 3:Battlefield.empty_field, 4:Battlefield.empty_field, 5:Battlefield.empty_field, 6:Battlefield.empty_field},
+            6:{0:'6', 1:Battlefield.empty_field, 2:Battlefield.empty_field, 3:Battlefield.empty_field, 4:Battlefield.empty_field, 5:Battlefield.empty_field, 6:Battlefield.empty_field},
         }
-
 
         # Флот игрока. 
         self.battle_ships = battle_ships
         
-
         # Расстановка флота игрока на поле.
         self.populate_battlefield()
 
@@ -46,14 +52,25 @@ class Battlefield():
         enemy_last_shot - координаты последнего выстрела противника
         enemy_total_shots - всего выстрелов противника
         '''
+
         print(f"\n\tПотери:[{kwargs['player_hints']}]\tОчки:[{kwargs['player_score']}]")
-        print(f"\n    Ход игрока:{kwargs['player_last_shot']}\n    Ход противника:{kwargs['enemy_last_shot']}")
-        print(f"\n    Всего:\n     ходов игрока:{kwargs['player_total_shots']}   хдов противника:{kwargs['enemy_total_shots']}")
+        try:
+            print(f"\n    Ход игрока:{kwargs['player_last_shot']}\n    Ход противника:{kwargs['enemy_last_shot']}")
+            print(f"\n    Всего:\n     ходов игрока:{kwargs['player_total_shots']}   хдов противника:{kwargs['enemy_total_shots']}")
+        except:
+            pass
+
         print(f"  {'_' * 40}\n")
         for ox in self.fieldMatrix:
             for oy in self.fieldMatrix[ox].values():
                 print(f"   {oy}", end = f"{' ' * 2}")
             print('\n')
+        try:
+            {kwargs['player_last_shot']}
+            print(f"{' ' * 6}Палубы: {colored('■', 'cyan')} - три {colored('■', 'magenta')} - две {colored('■', 'yellow')} - одна")
+            print('\n')
+        except:
+            pass
 
 
     def populate_battlefield(self):
@@ -63,12 +80,14 @@ class Battlefield():
         # Выбор корабля
         for ship in self.battle_ships:
             # Выбор начальных координат для размещения корабля.
-            ox, oy = self.coordinat_selector(ship_decks = len(ship.get_ship_decks))
+            ox, oy = self.coordinat_selector(len(ship.get_ship_decks))
             # Размещение корабля.
             ship.set_ship_position(ox, oy)
-            for desk in range(len(ship.get_ship_decks)):
-                self.fieldMatrix[ox][oy] = ship.get_ship_decks[desk]
-                oy += 1
+            # Если играет человек.
+            if self.you_are_human:
+                for desk in ship.get_ship_decks:
+                    self.fieldMatrix[ox][oy] = desk
+                    oy += 1
 
 
     def coordinat_selector(self, ship_decks):
@@ -77,33 +96,35 @@ class Battlefield():
         ориентацией размещения и наличием кораблей по близости.
         '''
         while True:
-            oy = random.randint(1, 6)
-            ox = random.randint(1, 6)
             # Условия для 3х и 2х палубных кораблей, чтобы не зайти за края поля.
-            if (ship_decks == 3 and oy > 4):
-                oy -= 2
-            elif (ship_decks == 2 and oy > 5):
-                oy -= 1
-            # Поиск установленных кораблей по определенным координатам.
-            if self.position_search(ox = ox, oy = oy, ship_decks = ship_decks):
-                break
+            if ship_decks == 3:
+                oy = random.randrange(1, 4)
+                ox = random.randrange(1, 6)
+            if ship_decks == 2:
+                oy = random.randrange(1, 5)
+                ox = random.randrange(1, 6)
+            if ship_decks == 1:
+                oy = random.randrange(1, 6)
+                ox = random.randrange(1, 6)
+
+            ships = [ship for ship in self.battle_ships if len(ship.get_ship_position)]
+            if ships:
+                if self.search_in_ship_coordinats(ox, oy, ships):
+                    return(ox, oy)
+                else:
+                    continue
             else:
-                continue
-        return(ox, oy)
+                return(ox, oy)
 
 
-    def position_search(self, ox, oy, ship_decks = 1):
-        '''
-        Поиск корабля по координатам.
-        '''
-        for _ in range(0, ship_decks):
-            for _oy in range(oy - 1 if oy > 1 else oy, oy + 2 if oy < 6 else oy):
-                for _ox in range(ox - 1 if ox > 1 else ox, ox + 2 if ox < 6 else ox):
-                    # Если найден корабль или взорванная палуба.
-                    if BattleShip.desk in self.fieldMatrix[_ox][_oy]:
-                        return False
-            # Двигаемся по оси. 
-            oy += 1 if oy < 6 else 0
+    def search_in_ship_coordinats(self, ox, oy, ships):
+        for ship in ships:
+            if f"{ox}{oy}" in [f"{ship.get_ship_position[2][0]}{position}" for position in ship.get_ship_position[3]]:
+                return False
+            if int(f"{ox}{oy}") == int(f"{ship.get_ship_position[2][0]}{ship.get_ship_position[3][0]}") - 1:
+                return False
+            if int(f"{ox}{oy}") == int(f"{ship.get_ship_position[2][0]}{ship.get_ship_position[3][-1]}") + 1:
+                return False
         return True
 
 
@@ -113,9 +134,9 @@ class BattleShip():
     '''
 
 
-    desk = '#'
-    bang = 'X'
-    blunder = 'T'
+    desk = '■'
+    bang = colored('✘', 'red')
+    blunder = colored('●', 'cyan')
 
     def __init__(self, ship_decks):
         self.__ship_decks = []
@@ -153,9 +174,10 @@ class BattleShip():
         '''
         Обозначить палубы корабля.
         '''
+        ship_colors = {1:"yellow", 2:"magenta", 3:"green"}
         if 0 < ship_decks < 4:
             for _ in range(ship_decks):
-                self.__ship_decks.append(BattleShip.desk)
+                self.__ship_decks.append(colored(BattleShip.desk, ship_colors[ship_decks]))
             return ship_decks
         else:
             raise(IndexError)
@@ -258,11 +280,11 @@ class Player():
         Выстрел игрока.
         '''
         while True:
-            __move = input(' -> ')
+            __move = input(colored(' → ', 'green'))
 
             # Выход из игры.
             if __move == 'q':
-                print("До встречи!\n")
+                print(colored("До встречи! ✋\n", 'yellow'))
                 sys.exit()
 
             # Обработка ввода.
@@ -275,11 +297,11 @@ class Player():
                     self.shot_history.append(self.last_shot)
                     break
                 except DoubleShotException:
-                    print(f"Повторная стрельба по одним координатам запрещена!")
+                    print(colored(f"Повторная стрельба по одним координатам запрещена! ☝", 'red'))
                     continue
 
             else:
-                print("Введите корректное значение!")
+                print(colored("Введите корректное значение! ☝", 'yellow'))
                 continue
 
         return self.last_shot
@@ -324,17 +346,20 @@ class TheGame():
     '''
 
 
-    def __init__(self):
+    def __init__(self, player_name):
+        # Имя игрока.
+        self.player_name = player_name
+
         # Параметры игры игрока.
         self.human_player_fleet =  self.make_fleet(three_deck = 1, double_deck = 2, single_deck = 4)
-        self.human_player_field = Battlefield(self.human_player_fleet)
-        self.human_player = Player("Вася", self.human_player_fleet, self.human_player_field)
+        self.human_player_field = Battlefield(self.human_player_fleet,  you_are_human = True)
+        self.human_player = Player(self.player_name, self.human_player_fleet, self.human_player_field)
 
 
         # Параметры игры компьютера.
         self.ai_player_fleet =  self.make_fleet(three_deck = 1, double_deck = 2, single_deck = 4)
-        self.ai_player_field = Battlefield(self.ai_player_fleet)
-        self.ai_player = AIPlayer("RoboCop", self.ai_player_fleet, self.ai_player_field)
+        self.ai_player_field = Battlefield(self.ai_player_fleet, you_are_human = False)
+        self.ai_player = AIPlayer("R2D2", self.ai_player_fleet, self.ai_player_field)
 
 
         # Список игроков, для удобства.
@@ -396,13 +421,11 @@ class TheGame():
                 enemy_total_shots - всего выстрелов противника
                 '''
                 # Поле противника.
-                # self.ai_player.battlefield.display_play_field(
-                #     player_hints = self.ai_player.player_hint, 
-                #     player_score = self.ai_player.player_score,
-                #     player_last_shot = self.ai_player.last_shot,
-                #     player_total_shots = len(self.ai_player.shot_history),
-                #     enemy_last_shot =self.human_player.last_shot,
-                #     enemy_total_shots = len(self.human_player.shot_history))
+                self.ai_player.battlefield.display_play_field(
+                    player_hints = self.ai_player.player_hint, 
+                    player_score = self.ai_player.player_score,
+                )
+
                 # Отображать только поле игрока.
                 self.human_player.battlefield.display_play_field(
                     player_hints = self.human_player.player_hint, 
@@ -415,7 +438,6 @@ class TheGame():
                 move = player.move()
                 if move:
                     player.player_score = self.shot(enemy, ox = move[0], oy = move[1])
-                    # continue
                 self.victory(player, enemy)
                 break
 
@@ -424,19 +446,22 @@ class TheGame():
         '''
         Выстрел.
         '''
-        if not enemy.battlefield.position_search(ox, oy):
-            # Помечаем клетку по которой велась стрельба.
-            if '.' == enemy.battlefield.fieldMatrix[ox][oy]:
-                enemy.battlefield.fieldMatrix[ox][oy] = BattleShip.blunder
-            if BattleShip.desk in enemy.battlefield.fieldMatrix[ox][oy]:
+        # Помечаем клетку по которой велась стрельба.
+        for battleship in  enemy.fleet:
+            if f"{ox}{oy}" in [f"{battleship.get_ship_position[2][0]}{position}" for position in battleship.get_ship_position[3]]:
+                battleship.blow_up_the__deck(battleship.get_ship_position[3].index(oy))
                 enemy.battlefield.fieldMatrix[ox][oy] = BattleShip.bang
+            else:
+                if  Battlefield.empty_field == enemy.battlefield.fieldMatrix[ox][oy]:
+                    enemy.battlefield.fieldMatrix[ox][oy] = BattleShip.blunder
 
-            for ship in enemy.fleet:
-                # Определяем корабль по которому велась стрельбы.
-                if ox in ship.get_ship_position[2] and oy in ship.get_ship_position[3]:
-                    # Засчитываем попадание.
-                    ship.set_hit
-                    enemy.player_hint += 1
+
+        for ship in enemy.fleet:
+            # Определяем корабль по которому велась стрельбы.
+            if ox in ship.get_ship_position[2] and oy in ship.get_ship_position[3]:
+                # Засчитываем попадание.
+                ship.set_hit
+                enemy.player_hint += 1
         return(sum([ship.get_hit for ship in enemy.fleet]))
 
 
@@ -445,11 +470,13 @@ class TheGame():
         Определение победителя.
         '''
         if player.player_score == sum([ship.number_of_ship_decks for ship in enemy.fleet]):
-            print(f"Ура! Пбедил {player.player_name}!")
+            print(colored(f"🎆 Ура! Пбедил {player.player_name}! 🎆", 'red'))
             sys.exit()
 
 
-
 if __name__ == "__main__":
-    # player_name = input("Введите имя игрока: ")
-    game = TheGame()
+    while True:
+        player_name = input("Введите имя игрока: ")
+        if len(player_name) < 2:
+            continue
+        game = TheGame(player_name)
